@@ -10,8 +10,6 @@ import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -21,10 +19,13 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
+    private ArrayList<MediaPlayer> mps = new ArrayList<MediaPlayer>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         verifyStoragePermissions(this);
 
         final String soundRootDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath() + "/SIWTW";
@@ -38,16 +39,32 @@ public class MainActivity extends AppCompatActivity {
         //final String soundRootDirectory = "/storage/emulated/0/Music/SIWTW";
         ListView lv;
         final ArrayList<String> FilesInFolder = GetFiles(soundRootDirectory);
+        final ArrayList<SoundItem> soundItems = new ArrayList();
+        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
+        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
+
         lv = (ListView)findViewById(R.id.soundsListView);
+        SoundItemListAdapter adapter=new SoundItemListAdapter(this, soundItems);
 
-        lv.setAdapter(new ArrayAdapter<String>(this,
-                android.R.layout.simple_list_item_1, FilesInFolder));
+        lv.setAdapter(adapter);
+        //lv.setAdapter(new ArrayAdapter<String>(this,
+                //R.layout.sound_list_item, R.id.soundDisplayName, FilesInFolder));
 
-        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        /*lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
                 playChosenSound(soundRootDirectory + "/" + FilesInFolder.get(position));
             }
-        });
+        });*/
     }
 
     // Storage Permissions
@@ -94,6 +111,15 @@ public class MainActivity extends AppCompatActivity {
         return MyFiles;
     }
 
+    public void stopPlayback(View v)
+    {
+        for (MediaPlayer mp: mps) {
+            mp.stop();
+            mp.release();
+        }
+        mps.clear();
+    }
+
     public void playChosenSound(String audioPathName)
     {
         MediaPlayer mp = new MediaPlayer();
@@ -104,6 +130,14 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         mp.start();
+        mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            @Override
+            public void onCompletion(MediaPlayer mplayer) {
+                mps.remove(mplayer);
+                mplayer.release();
+            }
+        });
+        mps.add(mp);
     }
 
     public void playTestSound(View v)
