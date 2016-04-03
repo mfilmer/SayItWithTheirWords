@@ -25,6 +25,12 @@ public class MainActivity extends AppCompatActivity {
     private SoundPool soundPool;
 
     @Override
+    protected void onDestroy() {
+        soundPool.release();
+        super.onDestroy();
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
