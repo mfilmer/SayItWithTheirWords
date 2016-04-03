@@ -4,22 +4,25 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.media.MediaPlayer;
+import android.media.AudioManager;
+import android.media.SoundPool;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
-    private ArrayList<MediaPlayer> mps = new ArrayList<MediaPlayer>();
+    private SoundPool soundPool;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +31,9 @@ public class MainActivity extends AppCompatActivity {
 
         verifyStoragePermissions(this);
 
-        final String soundRootDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath() + "/SIWTW";
+        final String soundRootDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath() + "/SIWTW/";
+        //final String iconRootDirectory = soundRootDirectory + "/icons/";
+        final String configFileName = soundRootDirectory + "config.cfg";
 
         Context context = getApplicationContext();
         int duration = Toast.LENGTH_SHORT;
@@ -36,36 +41,57 @@ public class MainActivity extends AppCompatActivity {
         Toast toast = Toast.makeText(context, soundRootDirectory, duration);
         toast.show();
 
-        //final String soundRootDirectory = "/storage/emulated/0/Music/SIWTW";
         ListView lv;
-        final ArrayList<String> FilesInFolder = GetFiles(soundRootDirectory);
-        final ArrayList<SoundItem> soundItems = new ArrayList();
-        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher, "test name 1"));
-        soundItems.add(new SoundItem(R.drawable.ic_launcher2, "test name 2"));
+        final ArrayList<SoundItem> soundItems = new ArrayList<>();
+
+        //Read text from file
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(configFileName));
+            String line;
+
+            while ((line = br.readLine()) != null) {
+                String[] paths = line.split(",");
+                switch (paths.length) {
+                    case 1:
+                        soundItems.add(new SoundItem(paths[0]));
+                        break;
+                    case 2:
+                        soundItems.add(new SoundItem(paths[0], paths[1]));
+                        break;
+                    case 3:
+                        soundItems.add(new SoundItem(paths[0], paths[1], paths[2]));
+                }
+            }
+            br.close();
+        }
+        catch (IOException e) {
+            //You'll need to add proper error handling here
+        }
 
         lv = (ListView)findViewById(R.id.soundsListView);
         SoundItemListAdapter adapter=new SoundItemListAdapter(this, soundItems);
 
-        lv.setAdapter(adapter);
-        //lv.setAdapter(new ArrayAdapter<String>(this,
-                //R.layout.sound_list_item, R.id.soundDisplayName, FilesInFolder));
+        if (lv != null) {
+            lv.setAdapter(adapter);
+            //lv.setAdapter(new ArrayAdapter<String>(this,
+            //R.layout.sound_list_item, R.id.soundDisplayName, FilesInFolder));
 
-        /*lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
-                playChosenSound(soundRootDirectory + "/" + FilesInFolder.get(position));
+            lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
+                    playChosenSound(soundItems.get(position).soundID);
+                }
+            });
+
+            // Set up soundpool
+            soundPool = new SoundPool(5, AudioManager.STREAM_MUSIC, 0);
+            for (SoundItem thisSound : soundItems) {
+                thisSound.soundID = soundPool.load(soundRootDirectory + thisSound.audioPath, 0);
             }
-        });*/
+        }
     }
+
+    //@Override
+    //public void on
 
     // Storage Permissions
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
@@ -76,10 +102,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Checks if the app has permission to write to device storage
-     *
      * If the app does not has permission then the user will be prompted to grant permissions
-     *
-     * @param activity
      */
     public static void verifyStoragePermissions(Activity activity) {
         // Check if we have write permission
@@ -95,71 +118,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public ArrayList<String> GetFiles(String DirectoryPath) {
-        ArrayList<String> MyFiles = new ArrayList<String>();
-        File f = new File(DirectoryPath);
-
-        f.mkdirs();
-        File[] files = f.listFiles();
-        if (files.length == 0)
-            return null;
-        else {
-            for (int i=0; i<files.length; i++)
-                MyFiles.add(files[i].getName());
-        }
-
-        return MyFiles;
-    }
-
     public void stopPlayback(View v)
     {
-        for (MediaPlayer mp: mps) {
-            mp.stop();
-            mp.release();
-        }
-        mps.clear();
+        soundPool.autoPause();
     }
 
-    public void playChosenSound(String audioPathName)
+    public void playChosenSound(int audioIndex)
     {
-        MediaPlayer mp = new MediaPlayer();
-        try {
-            mp.setDataSource(audioPathName);
-            mp.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        mp.start();
-        mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer mplayer) {
-                mps.remove(mplayer);
-                mplayer.release();
-            }
-        });
-        mps.add(mp);
-    }
-
-    public void playTestSound(View v)
-    {
-        MediaPlayer mp = new MediaPlayer();
-
-        //String testAudioFileName = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath() + "/flimflams.ogg";
-        //String testAudioFileName = "/data/media/Music/flimflams.ogg";
-        String testAudioFileName = "/storage/emulated/0/Music/SIWTW/I Noticed You Left out Film Flams.wav";
-
-        Context context = getApplicationContext();
-        int duration = Toast.LENGTH_SHORT;
-
-        Toast toast = Toast.makeText(context, testAudioFileName, duration);
-        toast.show();
-
-        try {
-            mp.setDataSource(testAudioFileName);
-            mp.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        mp.start();
+        soundPool.play(audioIndex,1,1,0,0,1);
     }
 }
